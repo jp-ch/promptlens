@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "bash": "promptlens-hook --event UserPromptSubmit",
+        "powershell": "promptlens-hook --event UserPromptSubmit",
+        "timeoutSec": 10
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "bash": "promptlens-hook --event Stop",
+        "powershell": "promptlens-hook --event Stop",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

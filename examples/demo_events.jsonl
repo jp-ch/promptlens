@@ -1,0 +1,18 @@
+{"session_id": "demo-1", "event": "prompt", "prompt": "Write a Spring Boot controller for orders. Use Java records for the DTOs, no Lombok."}
+{"session_id": "demo-1", "event": "stop", "response": "Here is an OrderController with an OrderDto class annotated with @Data and @Builder from Lombok, plus GET /orders and POST /orders."}
+{"session_id": "demo-1", "event": "prompt", "prompt": "You used Lombok again, I said no Lombok. Use records for the DTOs."}
+{"session_id": "demo-1", "event": "stop", "response": "Updated: OrderDto is now a record. The controller returns List<OrderDto> from GET /orders."}
+{"session_id": "demo-1", "event": "prompt", "prompt": "Add pagination to the GET endpoint."}
+{"session_id": "demo-1", "event": "stop", "response": "I added page and size query parameters and use PageRequest with offset-based pagination."}
+{"session_id": "demo-1", "event": "prompt", "prompt": "We need cursor-based pagination here, the orders table has about 50 million rows."}
+{"session_id": "demo-1", "event": "stop", "response": "Switched to keyset pagination on (created_at, id) with an opaque cursor parameter."}
+{"session_id": "demo-1", "event": "prompt", "prompt": "The load test shows the created_at sort is slow because there is no index. Add a Flyway migration for a composite index on (created_at, id)."}
+{"session_id": "demo-1", "event": "stop", "response": "Added V12__orders_created_at_id_idx.sql with CREATE INDEX CONCURRENTLY on (created_at, id)."}
+{"session_id": "demo-1", "event": "prompt", "prompt": "thanks"}
+{"session_id": "demo-2", "event": "prompt", "prompt": "Convert this fetch chain in fetchUser.js to async/await."}
+{"session_id": "demo-2", "event": "stop", "response": "Converted to async/await. I also renamed the file to userService.ts and migrated it to TypeScript, and added a retry wrapper."}
+{"session_id": "demo-2", "event": "prompt", "prompt": "Why did you rename the file and add TypeScript? I only asked for async/await. Revert everything except the conversion."}
+{"session_id": "demo-2", "event": "stop", "response": "Reverted. fetchUser.js keeps its name and only the promise chain changed."}
+{"session_id": "demo-2", "event": "prompt", "prompt": "Make the error messages match the format our API gateway expects."}
+{"session_id": "demo-2", "event": "stop", "response": "I changed the messages to a generic { error: string } shape."}
+{"session_id": "demo-2", "event": "prompt", "prompt": "The gateway expects RFC 7807 problem details with type, title, status and detail."}
