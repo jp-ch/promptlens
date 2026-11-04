@@ -6,6 +6,7 @@ to the previous one, and if so, why?
 
 from __future__ import annotations
 
+import itertools
 import re
 import sqlite3
 
@@ -21,24 +22,21 @@ def looks_like_confirmation(text: str) -> bool:
 
 def build_turns(con: sqlite3.Connection, session_id: str | None = None) -> int:
     """Create missing turn rows. Returns the number of new turns."""
+    sql = (
+        "select coalesce(session_id, 'unknown') sid, id, event, prompt, response from events"
+        " where event in ('prompt', 'stop')"
+    )
+    params: tuple = ()
     if session_id:
-        sessions = [session_id]
-    else:
-        rows = con.execute("select distinct coalesce(session_id, 'unknown') s from events").fetchall()
-        sessions = [r["s"] for r in rows]
+        sql += " and coalesce(session_id, 'unknown') = ?"
+        params = (session_id,)
+    rows = con.execute(sql + " order by sid, id", params).fetchall()
 
     created = 0
-    for sid in sessions:
-        rows = con.execute(
-            "select id, event, prompt, response from events"
-            " where coalesce(session_id, 'unknown') = ? and event in ('prompt', 'stop')"
-            " order by id",
-            (sid,),
-        ).fetchall()
-
+    for sid, group in itertools.groupby(rows, key=lambda r: r["sid"]):
         current: dict | None = None
         idx = 0
-        for r in rows:
+        for r in group:
             if r["event"] == "prompt":
                 if current is not None:
                     cur = con.execute(

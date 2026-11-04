@@ -10,7 +10,7 @@ from __future__ import annotations
 import csv
 import random
 import sqlite3
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from .schema import CATEGORIES
@@ -28,10 +28,7 @@ def export_gold(con: sqlite3.Connection, path: str | Path, n: int, model: str, s
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
-        for r in sample:
-            d = dict(r)
-            d["human_category"] = ""
-            w.writerow(d)
+        w.writerows(dict(r) for r in sample)
     return len(sample)
 
 
@@ -41,12 +38,10 @@ def eval_gold(path: str | Path) -> dict:
     if not rows:
         raise ValueError("no labelled rows: fill the human_category column first")
 
-    for r in rows:
-        h = r["human_category"].strip()
+    pairs = [(r["human_category"].strip(), r["judge_category"].strip()) for r in rows]
+    for h, _ in pairs:
         if h not in CATEGORIES:
             raise ValueError(f"unknown human_category {h!r} (allowed: {', '.join(CATEGORIES)})")
-
-    pairs = [(r["human_category"].strip(), r["judge_category"].strip()) for r in rows]
     n = len(pairs)
     accuracy = sum(h == j for h, j in pairs) / n
     human_dist = Counter(h for h, _ in pairs)
@@ -54,9 +49,8 @@ def eval_gold(path: str | Path) -> dict:
     pe = sum((human_dist[c] / n) * (judge_dist[c] / n) for c in CATEGORIES)
     kappa = 1.0 if pe >= 1 else (accuracy - pe) / (1 - pe)
 
-    confusion: dict[str, dict[str, int]] = {}
+    confusion: dict[str, Counter] = defaultdict(Counter)
     for h, j in pairs:
-        confusion.setdefault(h, {}).setdefault(j, 0)
         confusion[h][j] += 1
 
     return {"n": n, "accuracy": accuracy, "kappa": kappa, "confusion": confusion}

@@ -8,30 +8,15 @@ import os
 import sys
 from pathlib import Path
 
-from . import db, gold, judge, report, segment
+from . import db, gold, judge, log_hook, report, segment
 from .redact import load_terms, redact
 
-HOOK_CONFIG = {
-    "version": 1,
-    "hooks": {
-        "UserPromptSubmit": [
-            {
-                "type": "command",
-                "bash": "promptlens-hook --event UserPromptSubmit",
-                "powershell": "promptlens-hook --event UserPromptSubmit",
-                "timeoutSec": 10,
-            }
-        ],
-        "Stop": [
-            {
-                "type": "command",
-                "bash": "promptlens-hook --event Stop",
-                "powershell": "promptlens-hook --event Stop",
-                "timeoutSec": 10,
-            }
-        ],
-    },
-}
+def _hook(event: str) -> list[dict]:
+    cmd = f"promptlens-hook --event {event}"
+    return [{"type": "command", "bash": cmd, "powershell": cmd, "timeoutSec": 10}]
+
+
+HOOK_CONFIG = {"version": 1, "hooks": {ev: _hook(ev) for ev in ("UserPromptSubmit", "Stop")}}
 
 
 def cmd_init_hooks(args: argparse.Namespace) -> int:
@@ -58,18 +43,19 @@ def cmd_import_jsonl(args: argparse.Namespace) -> int:
             e = json.loads(line)
             if e.get("event") not in ("prompt", "stop"):
                 continue
-            con.execute(
-                "insert into events(ts, session_id, event, cwd, prompt, response, transcript_path)"
-                " values (datetime('now'), ?, ?, null, ?, ?, null)",
-                (
-                    e.get("session_id", "imported"),
-                    e["event"],
-                    redact(e["prompt"], terms) if e.get("prompt") else None,
-                    redact(e["response"], terms) if e.get("response") else None,
-                ),
+            log_hook.store(
+                {
+                    "ts": log_hook._iso(None),
+                    "session_id": e.get("session_id", "imported"),
+                    "event": e["event"],
+                    "cwd": None,
+                    "prompt": redact(e["prompt"], terms) if e.get("prompt") else None,
+                    "response": redact(e["response"], terms) if e.get("response") else None,
+                    "transcript_path": None,
+                },
+                con,
             )
             n += 1
-    con.commit()
     print(f"Imported {n} events into {db.db_path()}")
     return 0
 

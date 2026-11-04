@@ -112,10 +112,8 @@ def validate_result(d: dict) -> dict:
         raise ValueError(f"bad category: {d['category']!r}")
     if d["subcategory"] is not None and d["subcategory"] not in SUBCATEGORIES:
         raise ValueError(f"bad subcategory: {d['subcategory']!r}")
-    if not d["is_iteration"] and d["category"] != "none":
-        raise ValueError("is_iteration=false requires category='none'")
-    if d["is_iteration"] and d["category"] == "none":
-        raise ValueError("is_iteration=true cannot have category='none'")
+    if d["is_iteration"] == (d["category"] == "none"):
+        raise ValueError("category='none' must go with is_iteration=false, and only then")
     if not isinstance(d["reasoning"], str):
         raise ValueError("reasoning must be a string")
 

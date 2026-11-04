@@ -10,11 +10,7 @@ from collections import Counter
 def summarize(con: sqlite3.Connection, model: str | None = None) -> dict:
     where = "where a.model = ?" if model else ""
     params = (model,) if model else ()
-    rows = con.execute(
-        "select a.*, t.session_id from analyses a join turns t on t.id = a.turn_id "
-        + where,
-        params,
-    ).fetchall()
+    rows = con.execute(f"select * from analyses a {where}", params).fetchall()
 
     iterations = [r for r in rows if r["is_iteration"]]
     by_category = Counter(r["category"] for r in iterations)

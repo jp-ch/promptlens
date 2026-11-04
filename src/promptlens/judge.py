@@ -9,6 +9,7 @@ import datetime as dt
 import json
 import os
 import sqlite3
+import sys
 from typing import Callable
 
 from . import schema
@@ -37,17 +38,22 @@ def openai_backend(system: str, user: str, model: str) -> dict:
     return json.loads(resp.choices[0].message.content)
 
 
-def dry_run_backend(system: str, user: str, model: str) -> dict:
-    """No network. Lets you test the whole pipeline end to end."""
+def _result(**overrides) -> dict:
     return {
-        "reasoning": "dry-run",
-        "is_iteration": True,
-        "category": "unclear",
+        "reasoning": "",
+        "is_iteration": False,
+        "category": "none",
         "subcategory": None,
-        "confidence": 0.0,
+        "confidence": 1.0,
         "evidence_quote": None,
         "suggested_fix": None,
+        **overrides,
     }
+
+
+def dry_run_backend(system: str, user: str, model: str) -> dict:
+    """No network. Lets you test the whole pipeline end to end."""
+    return _result(reasoning="dry-run", is_iteration=True, category="unclear", confidence=0.0)
 
 
 def _store(con: sqlite3.Connection, turn_id: int, model: str, r: dict) -> None:
@@ -100,20 +106,7 @@ def run_judge(
 
     for turn in con.execute(sql, params).fetchall():
         if looks_like_confirmation(turn["next_prompt"]):
-            _store(
-                con,
-                turn["id"],
-                model,
-                {
-                    "reasoning": "heuristic: short confirmation, no iteration",
-                    "is_iteration": False,
-                    "category": "none",
-                    "subcategory": None,
-                    "confidence": 1.0,
-                    "evidence_quote": None,
-                    "suggested_fix": None,
-                },
-            )
+            _store(con, turn["id"], model, _result(reasoning="heuristic: short confirmation, no iteration"))
             stats["skipped_confirmation"] += 1
             continue
 
@@ -127,9 +120,10 @@ def run_judge(
             try:
                 result = schema.validate_result(backend(schema.SYSTEM_PROMPT, user, model))
                 break
-            except Exception:
-                continue
+            except Exception as e:
+                last_error = e
         if result is None:
+            print(f"turn {turn['id']} failed: {last_error!r}", file=sys.stderr)
             stats["failed"] += 1
             continue
         _store(con, turn["id"], model, result)
